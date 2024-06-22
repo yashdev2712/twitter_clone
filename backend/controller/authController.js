@@ -53,11 +53,12 @@ export const signup = async (req, res) => {
     }
 
 }
+
 export const login = async (req, res) => {
     try {
         const { username, password } = req.body;
         const user = await User.findOne({ username });
-        const isPasswordCorrect = await bcrypt.compare(password, user?.password || "");
+        const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
         if (!user || !isPasswordCorrect) {
             return res.status(400).json({ error: "Invalid username or password" });
@@ -99,9 +100,16 @@ export const logout = async (req, res) => {
 }
 
 
-export const getMe = async (req,res)=>{
-    try{
-        const user = await User.findById(req.user._id)
-     }
-    catch(error){}
+export const getMe = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select("-password");
+        res.status(200).json(user)
+
+    }
+    catch (error) {
+        console.error("Error occured:", error.message);
+        return res.status(500).json({
+            Error: "internal server error"
+        })
+    }
 }
