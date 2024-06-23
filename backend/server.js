@@ -1,9 +1,13 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import connectToDb from "./db/db.js";
-import  authRoutes from "./Routes/authRoutes.js"
 import cookieParser from "cookie-parser";
+
+import authRoutes from "./Routes/authRoutes.js";
+import userRoutes from "./Routes/userRoutes.js";
+
+import connectToDb from "./db/db.js";
+
 
 dotenv.config();
 const PORT = process.env.PORT;
@@ -19,7 +23,8 @@ app.get("/", (req, res) => {
     res.send("hii there");
 })
 
-app.use("/api/auth",authRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 
 
 app.listen(PORT, () => {
