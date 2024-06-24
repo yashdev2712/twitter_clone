@@ -1,7 +1,7 @@
 import User from "../models/userSchema.js";
 import Notification from "../models/notificationSchema.js";
 import bcrypt from "bcryptjs";
-
+import { v2 as cloudinary } from "cloudinary";
 
 export const getUserProfile = async (req, res) => {
     const { username } = req.params;
@@ -114,39 +114,61 @@ export const updateProfile = async (req, res) => {
     const userId = req.user._id;
 
     try {
-        const user = await User.findById(userId);
+        let user = await User.findById(userId);
         if (!user) {
-            return res.status(400).json({
-                Message: "user not found"
-            })
+            return res.status(400).json({ Message: "User not found" });
         }
 
-        if ((!newPassword && currentPassword) || (!currentPassword && newPassword)) {
-            return res.status(400).json({ error: "Please provide both current password and new password" })
+        // Handle password update
+        if ((currentPassword && !newPassword) || (!currentPassword && newPassword)) {
+            return res.status(400).json({ error: "Please provide both current password and new password" });
         }
 
         if (currentPassword && newPassword) {
             const isMatch = await bcrypt.compare(currentPassword, user.password);
             if (!isMatch) {
-                return res.status(400).json({
-                    Error: "Current password is incorrect"
-                })
+                return res.status(400).json({ Error: "Current password is incorrect" });
             }
 
             if (newPassword.length < 6) {
-                return res.status(400).json({
-                    error: "Password must be of 6 character"
-                })
+                return res.status(400).json({ error: "Password must be at least 6 characters" });
             }
 
             const salt = await bcrypt.genSalt(10);
-
             user.password = await bcrypt.hash(newPassword, salt);
-
         }
-    }
-    catch (error) {
 
-    }
+        // Handle profile picture update
+        if (profilePic) {
+            if (user.profilePic) {
+                await cloudinary.uploader.destroy(user.profilePic.split("/").pop().split(".")[0]);
+            }
+            const uploadedResponse = await cloudinary.uploader.upload(profilePic);
+            user.profilePic = uploadedResponse.secure_url;
+        }
 
-}
+        // Handle cover picture update
+        if (coverPic) {
+            if (user.coverPic) {
+                await cloudinary.uploader.destroy(user.coverPic.split("/").pop().split(".")[0]);
+            }
+            const uploadedResponse = await cloudinary.uploader.upload(coverPic);
+            user.coverPic = uploadedResponse.secure_url;
+        }
+
+        // Update other fields
+        user.fullname = fullname || user.fullname;
+        user.email = email || user.email;
+        user.username = username || user.username;
+        user.bio = bio || user.bio;
+
+        // Save user and ensure password is not sent back
+        user = await user.save();
+        user.password = undefined; // or use `delete user.password;`
+
+        return res.status(200).json(user);
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
