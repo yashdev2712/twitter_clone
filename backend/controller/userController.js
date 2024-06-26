@@ -107,68 +107,67 @@ export const followOrUnfollow = async (req, res) => {
 
 }
 
+
 export const updateProfile = async (req, res) => {
-    const { fullname, email, username, currentPassword, newPassword, bio } = req.body;
-    let { profilePic, coverPic } = req.body;
+	const { fullName, email, username, currentPassword, newPassword, bio, link } = req.body;
+	let { profileImg, coverImg } = req.body;
 
-    const userId = req.user._id;
+	const userId = req.user._id;
 
-    try {
-        let user = await User.findById(userId);
-        if (!user) {
-            return res.status(400).json({ Message: "User not found" });
-        }
+	try {
+		let user = await User.findById(userId);
+		if (!user) return res.status(404).json({ message: "User not found" });
 
-        // Handle password update
-        if ((currentPassword && !newPassword) || (!currentPassword && newPassword)) {
-            return res.status(400).json({ error: "Please provide both current password and new password" });
-        }
+		if ((!newPassword && currentPassword) || (!currentPassword && newPassword)) {
+			return res.status(400).json({ error: "Please provide both current password and new password" });
+		}
 
-        if (currentPassword && newPassword) {
-            const isMatch = await bcrypt.compare(currentPassword, user.password);
-            if (!isMatch) {
-                return res.status(400).json({ Error: "Current password is incorrect" });
-            }
+		if (currentPassword && newPassword) {
+			const isMatch = await bcrypt.compare(currentPassword, user.password);
+			if (!isMatch) return res.status(400).json({ error: "Current password is incorrect" });
+			if (newPassword.length < 6) {
+				return res.status(400).json({ error: "Password must be at least 6 characters long" });
+			}
 
-            if (newPassword.length < 6) {
-                return res.status(400).json({ error: "Password must be at least 6 characters" });
-            }
+			const salt = await bcrypt.genSalt(10);
+			user.password = await bcrypt.hash(newPassword, salt);
+		}
 
-            const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(newPassword, salt);
-        }
+		if (profileImg) {
+			if (user.profileImg) {
+				// https://res.cloudinary.com/dyfqon1v6/image/upload/v1712997552/zmxorcxexpdbh8r0bkjb.png
+				await cloudinary.uploader.destroy(user.profileImg.split("/").pop().split(".")[0]);
+			}
 
-        // Handle profile picture update
-        if (profilePic) {
-            if (user.profilePic) {
-                await cloudinary.uploader.destroy(user.profilePic.split("/").pop().split(".")[0]);
-            }
-            const uploadedResponse = await cloudinary.uploader.upload(profilePic);
-            user.profilePic = uploadedResponse.secure_url;
-        }
+			const uploadedResponse = await cloudinary.uploader.upload(profileImg);
+			profileImg = uploadedResponse.secure_url;
+		}
 
-        
-        if (coverPic) {
-            if (user.coverPic) {
-                await cloudinary.uploader.destroy(user.coverPic.split("/").pop().split(".")[0]);
-            }
-            const uploadedResponse = await cloudinary.uploader.upload(coverPic);
-            user.coverPic = uploadedResponse.secure_url;
-        }
+		if (coverImg) {
+			if (user.coverImg) {
+				await cloudinary.uploader.destroy(user.coverImg.split("/").pop().split(".")[0]);
+			}
 
-        // Update other fields
-        user.fullname = fullname || user.fullname;
-        user.email = email || user.email;
-        user.username = username || user.username;
-        user.bio = bio || user.bio;
+			const uploadedResponse = await cloudinary.uploader.upload(coverImg);
+			coverImg = uploadedResponse.secure_url;
+		}
 
-        // Save user and ensure password is not sent back
-        user = await user.save();
-        user.password = undefined; // or use `delete user.password;`
+		user.fullName = fullName || user.fullName;
+		user.email = email || user.email;
+		user.username = username || user.username;
+		user.bio = bio || user.bio;
+		user.link = link || user.link;
+		user.profileImg = profileImg || user.profileImg;
+		user.coverImg = coverImg || user.coverImg;
 
-        return res.status(200).json(user);
-    } catch (error) {
-        console.error(error.message);
-        return res.status(500).json({ error: "Internal server error" });
-    }
+		user = await user.save();
+
+		// password should be null in response
+		user.password = null;
+
+		return res.status(200).json(user);
+	} catch (error) {
+		console.log("Error in updateUser: ", error.message);
+		res.status(500).json({ error: error.message });
+	}
 };

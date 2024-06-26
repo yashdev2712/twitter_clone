@@ -11,7 +11,7 @@ router.get("/suggested", middleware, suggestedProfile);
 
 router.post("/follow/:id", middleware, followOrUnfollow);
 
-router.post("update", middleware, updateProfile);
+router.post("/update", middleware, updateProfile);
 
 
 
