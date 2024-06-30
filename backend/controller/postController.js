@@ -1,5 +1,6 @@
 import User from "../models/userSchema.js";
 import Post from "../models/postSchema.js";
+import Notification from "../models/notificationSchema.js";
 import { v2 as cloudinary } from "cloudinary";
 
 export const createPost = async (req, res) => {
@@ -75,6 +76,46 @@ export const deletePost = async (req, res) => {
 };
 
 export const likeorUnlikePost = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { id: postId } = req.params;
+
+        const post = await Post.findById(postId);
+
+        if (!post) {
+            return res.status(404).json({ error: "post not found" })
+        }
+
+        const userLikedPost = post.likes.includes(userId);
+
+        if (userLikedPost) {
+            // Unlike post
+            await Post.updateOne({ _id: postId }, { $pull: { likes: userId } });
+            await User.updateOne({ _id: userId }, { $pull: { likedPosts: postId } });
+
+            const updatedLikes = post.likes.filter((id) => id.toString() !== userId.toString());
+            res.status(200).json(updatedLikes);
+        } else {
+            // Like post
+            post.likes.push(userId);
+            await User.updateOne({ _id: userId }, { $push: { likedPosts: postId } });
+            await post.save();
+
+            const notification = Notification.create({
+                from: userId,
+                to: post.user,
+                type: "like",
+            });
+
+
+            const updatedLikes = post.likes;
+            res.status(200).json(updatedLikes);
+        }
+    }
+    catch (error) {
+        console.log("Error in likeOrUnlike:", error.message);
+        res.status(500).json({ error: "Internal server error" })
+    }
 
 }
 
@@ -103,6 +144,31 @@ export const commentPost = async (req, res) => {
         await post.save();
 
         res.status(200).json(post);
+    }
+    catch (error) {
+        console.log("Error in commentOnPost:", error);
+        res.status(500).json({ error: "Internal server error" })
+    }
+}
+
+export const getAllPost = async (req, res) => {
+    try { 
+        
+        const posts = await Post.find().sort({createdAt:-1})
+        .populate({
+            path:"user",
+            select:"-password"
+        }).populate({
+            path:"comments.user",
+            select:"-password"
+        });
+
+
+        if(posts.length===0){
+            return res.status(200).json([]);
+        }
+
+        return res.status(200).json(posts);
     }
     catch (error) {
         console.log("Error in commentOnPost:", error);
