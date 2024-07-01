@@ -34,7 +34,7 @@ const userSchema = mongoose.Schema({
     }, bio: {
         type: String,
         default: ""
-    }, likedPost: [
+    }, likedPosts: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Post",
