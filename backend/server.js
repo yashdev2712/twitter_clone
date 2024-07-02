@@ -7,6 +7,7 @@ import { v2 as cloudinary } from "cloudinary";
 import authRoutes from "./Routes/authRoutes.js";
 import userRoutes from "./Routes/userRoutes.js";
 import postRoutes from "./Routes/postRoutes.js";
+import notificationRoutes from "./Routes/notificationRoutes.js";
 
 import connectToDb from "./db/db.js";
 
@@ -35,6 +36,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/posts", postRoutes);
+app.use("/api/notification",notificationRoutes);
 
 
 app.listen(PORT, () => {
