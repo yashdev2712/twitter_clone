@@ -228,3 +228,34 @@ export const followingPost = async (req, res) => {
 
     }
 }
+
+export const getUserPosts = async (req, res) => {
+    try {
+        const { username } = req.params;
+        const user = await User.findOne({ username });
+
+        if (!user) {
+            return res.status(404).json({
+                error: "User not found"
+            })
+        }
+
+        const posts = await Post.find({ user: user._id })
+            .sort({ createdAt: -1 })
+            .populate({
+                path: "user",
+                select: "-password"
+            })
+            .populate({
+                path: "comments.user",
+                select: "-password"
+            })
+
+            return res.status(200).json(posts)
+    }
+    catch (error) {
+        console.log("Error in getLikedPosts controller: ", error);
+        res.status(500).json({ error: "Internal server error" });
+
+    }
+}
